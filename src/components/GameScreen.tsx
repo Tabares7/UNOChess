@@ -4,10 +4,12 @@ import { isMoveCard } from '../engine/cards';
 import { DISGUISES, frozenIds, movesFor, otherSeat, seatInCheck, shieldedIds, timeLeft } from '../engine/game';
 import type { Action, GameState, Move, PieceType, Seat } from '../engine/types';
 import { fmt, useT } from '../i18n';
+import { musicEnabled, setMusicEnabled, startMusic, stopMusic } from '../music';
 import type { Controller } from '../net/useGame';
 import { isMuted, play, setMuted } from '../sound';
-import { Board, glyph } from './Board';
+import { Board } from './Board';
 import { CardView } from './CardView';
+import { Avatar, Icon, PieceSprite } from './Pixel';
 import { Rules } from './Rules';
 
 const EMOJIS = ['😀', '😂', '😮', '😡', '👏', '🔥'];
@@ -15,7 +17,7 @@ const EMOJIS = ['😀', '😂', '😮', '😡', '👏', '🔥'];
 function formatClock(ms: number | null) {
   if (ms === null) return '';
   const total = Math.ceil(ms / 1000);
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
 /** Fuerza un render periódico mientras corre el reloj */
@@ -43,7 +45,9 @@ function useGameSounds(state: GameState, viewSeat: Seat, local: boolean) {
       setTimeout(() => play(state.captured.length > p.captured.length ? 'capture' : 'move'), 80);
     }
     if (inCheck(state.board, state.seatColor[state.turn]) && state.turnNumber !== p.turnNumber) {
-      setTimeout(() => play('check'), 200);
+      setTimeout(() => play('check'), 220);
+    } else if (!local && state.turn === viewSeat && p.turn !== viewSeat) {
+      setTimeout(() => play('turn'), 300);
     }
   }, [state, viewSeat, local]);
 }
@@ -73,10 +77,16 @@ export function GameScreen({ ctl, onExit }: Props) {
   const [rules, setRules] = useState(false);
   const [confirmResign, setConfirmResign] = useState(false);
   const [muted, setMutedState] = useState(isMuted);
+  const [music, setMusic] = useState(musicEnabled);
   const [revealed, setRevealed] = useState<Seat | null>(null);
 
   useTick(!!state.clock && !state.result);
   useGameSounds(state, seat, local);
+
+  useEffect(() => {
+    startMusic();
+    return stopMusic;
+  }, []);
 
   // Al cambiar el turno o la fase, se limpia la selección
   useEffect(() => {
@@ -189,6 +199,19 @@ export function GameScreen({ ctl, onExit }: Props) {
   else if (card.kind === 'revive') hint = t.pickRevive;
   else hint = t.cards[card.kind][1];
 
+  // Cartel grande del turno
+  let banner: string;
+  let bannerCls = 'mine';
+  if (state.result) {
+    banner = t.gameOverBanner;
+    bannerCls = 'over';
+  } else if (local) banner = fmt(t.turnOfBanner, { name: state.names[state.turn] });
+  else if (state.turn === seat) banner = t.yourTurnBanner;
+  else {
+    banner = t.rivalTurnBanner;
+    bannerCls = 'theirs';
+  }
+
   const myCaptured = state.captured.filter((p) => p.color === myColor);
   const zone = card?.kind === 'number' && card.color !== 'black' && !checked ? card.color : null;
   const fromPiece = from !== null ? state.board[from] : null;
@@ -201,11 +224,18 @@ export function GameScreen({ ctl, onExit }: Props) {
     const active = state.turn === s && !state.result;
     const left = timeLeft(state, s, now);
     return (
-      <div className={`player-bar ${active ? 'active' : ''} ${top ? 'top' : ''}`}>
-        <span className={`dot ${color === 'w' ? 'white' : 'black'}`} />
+      <div className={`player-bar px ${active ? 'active' : ''}`}>
+        <Avatar id={state.avatars[s]} size={44} />
         <div className="pinfo">
-          <span className="pname">{state.names[s]}</span>
-          <span className="lost">{lost.map((p) => glyph(p.type)).join('')}</span>
+          <span className="pname">
+            <PieceSprite type="K" color={color} className="mini" />
+            {state.names[s]}
+          </span>
+          <span className="lost">
+            {lost.map((p) => (
+              <PieceSprite key={p.id} type={p.originType} color={p.color} className="tiny" />
+            ))}
+          </span>
         </div>
         {top && (
           <div className="opp-hand">
@@ -234,30 +264,50 @@ export function GameScreen({ ctl, onExit }: Props) {
   return (
     <div className="game">
       <header className="game-top">
-        <button type="button" className="icon-btn" onClick={() => setConfirmResign(true)} aria-label={t.resign}>
-          🏳️
+        <button type="button" className="icon-btn px red" onClick={() => setConfirmResign(true)} aria-label={t.resign}>
+          <Icon name="flag" />
         </button>
-        <span className="brand-small">UNOChess</span>
+        <span className="brand-small">
+          <span className="c-red">U</span>
+          <span className="c-yellow">N</span>
+          <span className="c-green">O</span>
+          <span className="c-blue">Chess</span>
+        </span>
         <div className="top-right">
-          <button type="button" className="icon-btn" onClick={() => setRules(true)} aria-label={t.howToPlay}>
-            ❔
+          <button
+            type="button"
+            className="icon-btn px yellow"
+            onClick={() => {
+              setMusicEnabled(!music);
+              setMusic(!music);
+            }}
+            aria-label={t.music}
+          >
+            <Icon name={music ? 'music' : 'musicOff'} color="#3b2a00" />
           </button>
           <button
             type="button"
-            className="icon-btn"
+            className="icon-btn px green"
             onClick={() => {
               setMuted(!muted);
               setMutedState(!muted);
             }}
-            aria-label="sound"
+            aria-label={t.sound}
           >
-            {muted ? '🔇' : '🔊'}
+            <Icon name={muted ? 'mute' : 'sound'} />
+          </button>
+          <button type="button" className="icon-btn px blue" onClick={() => setRules(true)} aria-label={t.howToPlay}>
+            <Icon name="help" />
           </button>
         </div>
       </header>
 
+      <div className={`turn-banner ${bannerCls}`} key={`${state.turnNumber}-${!!state.result}`}>
+        {banner}
+      </div>
+
       {ctl.status === 'disconnected' && (
-        <div className="banner warn">
+        <div className="banner warn px">
           {ctl.viewSeat === 0 ? t.rivalLeft : t.disconnected}
           {ctl.viewSeat === 1 && (
             <button type="button" className="btn small" onClick={ctl.reconnect}>
@@ -277,6 +327,7 @@ export function GameScreen({ ctl, onExit }: Props) {
           targets={targets.map((m) => m.to)}
           lastMove={state.lastMove}
           zone={zone}
+          frame={state.lastCard?.card.color ?? 'red'}
           shielded={shieldedIds(state)}
           frozen={new Set([...frozenIds(state, 0), ...frozenIds(state, 1)])}
           onSquare={onSquare}
@@ -299,7 +350,7 @@ export function GameScreen({ ctl, onExit }: Props) {
           </button>
         )}
         {myTurn && card?.kind === 'wild' && fromPiece && fromPiece.type !== 'K' && (
-          <div className="disguise">
+          <div className="choices">
             {DISGUISES.map((d) => (
               <button
                 type="button"
@@ -307,13 +358,13 @@ export function GameScreen({ ctl, onExit }: Props) {
                 className={`btn piece-btn ${disguise === d ? 'on' : ''}`}
                 onClick={() => setDisguise(d)}
               >
-                {glyph(d)}
+                <PieceSprite type={d} color={myColor} />
               </button>
             ))}
           </div>
         )}
         {myTurn && card?.kind === 'revive' && (
-          <div className="disguise">
+          <div className="choices">
             {myCaptured.length === 0 && <span className="muted">{t.noCaptured}</span>}
             {myCaptured.map((p) => (
               <button
@@ -323,7 +374,7 @@ export function GameScreen({ ctl, onExit }: Props) {
                 title={state.board[p.origin] ? t.originBusy : ''}
                 onClick={() => send({ type: 'revive', cardId: card.id, pieceId: p.id })}
               >
-                {glyph(p.originType)}
+                <PieceSprite type={p.originType} color={p.color} />
                 {state.board[p.origin] && <small>✗</small>}
               </button>
             ))}
@@ -341,39 +392,41 @@ export function GameScreen({ ctl, onExit }: Props) {
         )}
       </div>
 
-      <div className="hand">
-        {hideHand ? (
-          <button type="button" className="reveal" onClick={() => setRevealed(state.turn)}>
-            <strong>{fmt(t.passDevice, { name: state.names[state.turn] })}</strong>
-            <span>{t.tapToShow}</span>
-          </button>
-        ) : (
-          hand.map((c) => (
-            <CardView key={c.id} card={c} selected={c.id === cardId} disabled={!myTurn || !!pending} onClick={() => selectCard(c.id)} />
-          ))
+      <div className="hand-panel px">
+        <div className="hand">
+          {hideHand ? (
+            <button type="button" className="reveal" onClick={() => setRevealed(state.turn)}>
+              <Avatar id={state.avatars[state.turn]} size={48} />
+              <strong>{fmt(t.passDevice, { name: state.names[state.turn] })}</strong>
+              <span>{t.tapToShow}</span>
+            </button>
+          ) : (
+            hand.map((c) => (
+              <CardView key={c.id} card={c} selected={c.id === cardId} disabled={!myTurn || !!pending} onClick={() => selectCard(c.id)} />
+            ))
+          )}
+        </div>
+        {!local && (
+          <div className="emoji-bar">
+            {EMOJIS.map((e) => (
+              <button type="button" key={e} onClick={() => ctl.sendEmoji(e)}>
+                {e}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
-      {!local && (
-        <div className="emoji-bar">
-          {EMOJIS.map((e) => (
-            <button type="button" key={e} onClick={() => ctl.sendEmoji(e)}>
-              {e}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {toast && <div className="toast">{toast}</div>}
+      {toast && <div className="toast px">{toast}</div>}
 
       {promo && (
         <div className="modal-bg" onClick={() => setPromo(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal px" onClick={(e) => e.stopPropagation()}>
             <h3>{t.promote}</h3>
-            <div className="disguise">
+            <div className="choices">
               {(['Q', 'R', 'B', 'N'] as PieceType[]).map((p) => (
                 <button type="button" key={p} className="btn piece-btn" onClick={() => sendMove(promo, p)}>
-                  {glyph(p)}
+                  <PieceSprite type={p} color={myColor} />
                 </button>
               ))}
             </div>
@@ -383,7 +436,7 @@ export function GameScreen({ ctl, onExit }: Props) {
 
       {confirmResign && (
         <div className="modal-bg" onClick={() => setConfirmResign(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal px" onClick={(e) => e.stopPropagation()}>
             <h3>{t.resignConfirm}</h3>
             <div className="row">
               <button type="button" className="btn ghost" onClick={() => setConfirmResign(false)}>
@@ -392,7 +445,7 @@ export function GameScreen({ ctl, onExit }: Props) {
               {!state.result && (
                 <button
                   type="button"
-                  className="btn danger"
+                  className="btn primary"
                   onClick={() => {
                     send({ type: 'resign' });
                     setConfirmResign(false);
@@ -411,8 +464,8 @@ export function GameScreen({ ctl, onExit }: Props) {
 
       {state.result && (
         <div className="modal-bg">
-          <div className="modal result">
-            <div className="result-emoji">{state.result.winner === null ? '🤝' : local || state.result.winner === seat ? '🏆' : '😵'}</div>
+          <div className="modal px result">
+            {state.result.winner !== null && <Avatar id={state.avatars[state.result.winner]} size={96} className="result-avatar" />}
             <h2>{resultText()}</h2>
             <p>{t.reasons[state.result.reason]}</p>
             <div className="row">

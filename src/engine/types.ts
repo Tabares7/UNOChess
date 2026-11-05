@@ -66,6 +66,8 @@ export interface GameState {
   /** Color que controla cada asiento (cambia con la carta Reversa) */
   seatColor: [Color, Color];
   names: [string, string];
+  /** Avatar de cada asiento (id de src/pixel/sprites) */
+  avatars: [string, string];
   turn: Seat;
   turnNumber: number;
   hands: [Card[], Card[]];

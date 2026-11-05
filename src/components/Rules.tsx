@@ -20,7 +20,7 @@ export function Rules({ onClose }: { onClose: () => void }) {
   const t = useT();
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal rules" onClick={(e) => e.stopPropagation()}>
+      <div className="modal px rules" onClick={(e) => e.stopPropagation()}>
         <h2>{t.howToPlay}</h2>
         <ul className="rule-list">
           {t.rules.map((r) => (

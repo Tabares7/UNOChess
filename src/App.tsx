@@ -1,15 +1,20 @@
 import { useEffect, useState } from 'react';
 import { CardView } from './components/CardView';
+import { Avatar, Icon, PieceSprite } from './components/Pixel';
 import { GameScreen } from './components/GameScreen';
 import { Rules } from './components/Rules';
 import { I18nContext, dictionaries, useT, type Lang } from './i18n';
-import { useGuestGame, useHostGame, useLocalGame, type Controller } from './net/useGame';
+import { useGuestGame, useHostGame, useLocalGame, type Controller, type PlayerInfo } from './net/useGame';
+import { AVATARS, DEFAULT_AVATAR } from './pixel/sprites';
 
 type Screen =
   | { kind: 'home' }
-  | { kind: 'local'; names: [string, string]; minutes: number | null }
-  | { kind: 'host'; name: string; minutes: number | null }
-  | { kind: 'guest'; name: string; code: string };
+  | { kind: 'local'; players: [PlayerInfo, PlayerInfo]; minutes: number | null }
+  | { kind: 'host'; me: PlayerInfo; minutes: number | null }
+  | { kind: 'guest'; me: PlayerInfo; code: string };
+
+/** El jugador 2 en modo local usa la otra versión (hombre/mujer) del mismo personaje */
+const partnerAvatar = (id: string) => (id.endsWith('-m') ? id.replace(/-m$/, '-f') : id.replace(/-f$/, '-m'));
 
 const TIMES = [null, 3, 5, 10, 15, 30];
 
@@ -48,9 +53,9 @@ export default function App() {
     <I18nContext.Provider value={dictionaries[lang]}>
       <div className="app">
         {screen.kind === 'home' && <Home lang={lang} setLang={setLang} onStart={setScreen} />}
-        {screen.kind === 'local' && <LocalGame names={screen.names} minutes={screen.minutes} onExit={exit} />}
-        {screen.kind === 'host' && <HostGame name={screen.name} minutes={screen.minutes} onExit={exit} />}
-        {screen.kind === 'guest' && <GuestGame name={screen.name} code={screen.code} onExit={exit} />}
+        {screen.kind === 'local' && <LocalGame players={screen.players} minutes={screen.minutes} onExit={exit} />}
+        {screen.kind === 'host' && <HostGame me={screen.me} minutes={screen.minutes} onExit={exit} />}
+        {screen.kind === 'guest' && <GuestGame me={screen.me} code={screen.code} onExit={exit} />}
       </div>
     </I18nContext.Provider>
   );
@@ -59,6 +64,10 @@ export default function App() {
 function Home({ lang, setLang, onStart }: { lang: Lang; setLang: (l: Lang) => void; onStart: (s: Screen) => void }) {
   const t = useT();
   const [name, setName] = useState(() => load('name', ''));
+  const [avatar, setAvatar] = useState(() => {
+    const a = load('avatar', DEFAULT_AVATAR);
+    return AVATARS.some((x) => x.id === a) ? a : DEFAULT_AVATAR;
+  });
   const [minutes, setMinutes] = useState<number | null>(() => {
     const v = load('minutes', '10');
     return v === 'null' ? null : Number(v);
@@ -77,8 +86,10 @@ function Home({ lang, setLang, onStart }: { lang: Lang; setLang: (l: Lang) => vo
   }, []);
 
   const myName = name.trim() || t.player1;
+  const me: PlayerInfo = { name: myName, avatar };
   const remember = () => {
     save('name', name.trim());
+    save('avatar', avatar);
     save('minutes', String(minutes));
   };
 
@@ -93,7 +104,7 @@ function Home({ lang, setLang, onStart }: { lang: Lang; setLang: (l: Lang) => vo
       </div>
       <div className="logo-cards">
         <CardView card={{ id: 'l1', kind: 'number', color: 'red', value: 7 }} small />
-        <span className="logo-king">♚&#xFE0E;</span>
+        <PieceSprite type="K" color="w" className="logo-king" />
         <CardView card={{ id: 'l2', kind: 'plus2', color: 'blue' }} small />
       </div>
       <h1 className="logo">
@@ -108,6 +119,23 @@ function Home({ lang, setLang, onStart }: { lang: Lang; setLang: (l: Lang) => vo
         <span>{t.yourName}</span>
         <input value={name} maxLength={20} placeholder={t.player1} onChange={(e) => setName(e.target.value)} />
       </label>
+
+      <div className="field">
+        <span>{t.chooseAvatar}</span>
+        <div className="avatar-grid">
+          {AVATARS.map((a) => (
+            <button
+              type="button"
+              key={a.id}
+              className={`avatar-pick ${a.id === avatar ? 'on' : ''}`}
+              onClick={() => setAvatar(a.id)}
+              aria-label={a.id}
+            >
+              <Avatar id={a.id} size={44} />
+            </button>
+          ))}
+        </div>
+      </div>
 
       <label className="field">
         <span>{t.time}</span>
@@ -125,20 +153,20 @@ function Home({ lang, setLang, onStart }: { lang: Lang; setLang: (l: Lang) => vo
         className="btn primary big"
         onClick={() => {
           remember();
-          onStart({ kind: 'local', names: [myName, t.player2], minutes });
+          onStart({ kind: 'local', players: [me, { name: t.player2, avatar: partnerAvatar(avatar) }], minutes });
         }}
       >
-        📱 {t.playLocal}
+        <Icon name="phone" /> {t.playLocal}
       </button>
       <button
         type="button"
         className="btn big"
         onClick={() => {
           remember();
-          onStart({ kind: 'host', name: myName, minutes });
+          onStart({ kind: 'host', me, minutes });
         }}
       >
-        🌐 {t.createRoom}
+        <Icon name="globe" /> {t.createRoom}
       </button>
       <div className="join">
         <input
@@ -149,11 +177,11 @@ function Home({ lang, setLang, onStart }: { lang: Lang; setLang: (l: Lang) => vo
         />
         <button
           type="button"
-          className="btn"
+          className="btn blue"
           disabled={code.length !== 5}
           onClick={() => {
             remember();
-            onStart({ kind: 'guest', name: myName, code });
+            onStart({ kind: 'guest', me, code });
           }}
         >
           {t.joinRoom}
@@ -162,11 +190,11 @@ function Home({ lang, setLang, onStart }: { lang: Lang; setLang: (l: Lang) => vo
 
       <div className="home-links">
         <button type="button" className="link" onClick={() => setRules(true)}>
-          ❔ {t.howToPlay}
+          {t.howToPlay}
         </button>
         {installEvt && (
           <button type="button" className="link" onClick={() => installEvt.prompt()}>
-            ⬇️ {t.install}
+            {t.install}
           </button>
         )}
       </div>
@@ -175,20 +203,20 @@ function Home({ lang, setLang, onStart }: { lang: Lang; setLang: (l: Lang) => vo
   );
 }
 
-function LocalGame({ names, minutes, onExit }: { names: [string, string]; minutes: number | null; onExit: () => void }) {
-  const ctl = useLocalGame(names, minutes);
+function LocalGame({ players, minutes, onExit }: { players: [PlayerInfo, PlayerInfo]; minutes: number | null; onExit: () => void }) {
+  const ctl = useLocalGame(players, minutes);
   return <GameScreen ctl={ctl} onExit={onExit} />;
 }
 
-function HostGame({ name, minutes, onExit }: { name: string; minutes: number | null; onExit: () => void }) {
-  const ctl = useHostGame(name, minutes);
+function HostGame({ me, minutes, onExit }: { me: PlayerInfo; minutes: number | null; onExit: () => void }) {
+  const ctl = useHostGame(me, minutes);
   if (!ctl.state) return <Lobby ctl={ctl} onExit={onExit} />;
   return <GameScreen ctl={ctl} onExit={onExit} />;
 }
 
-function GuestGame({ name, code, onExit }: { name: string; code: string; onExit: () => void }) {
+function GuestGame({ me, code, onExit }: { me: PlayerInfo; code: string; onExit: () => void }) {
   const [err, setErr] = useState<string | null>(null);
-  const ctl = useGuestGame(name, code, setErr);
+  const ctl = useGuestGame(me, code, setErr);
   const t = useT();
   useEffect(() => {
     if (!err) return;
@@ -199,7 +227,7 @@ function GuestGame({ name, code, onExit }: { name: string; code: string; onExit:
   return (
     <>
       <GameScreen ctl={ctl} onExit={onExit} />
-      {err && <div className="toast">{t.errors[err] ?? err}</div>}
+      {err && <div className="toast px">{t.errors[err] ?? err}</div>}
     </>
   );
 }
@@ -226,9 +254,9 @@ function Lobby({ ctl, onExit }: { ctl: Controller; onExit: () => void }) {
       {isHost && (
         <>
           <p>{t.shareCode}</p>
-          <div className="code">{ctl.code}</div>
+          <div className="code px">{ctl.code}</div>
           <button type="button" className="btn primary big" onClick={share}>
-            🔗 {copied ? t.copied : t.share}
+            <Icon name="link" /> {copied ? t.copied : t.share}
           </button>
         </>
       )}

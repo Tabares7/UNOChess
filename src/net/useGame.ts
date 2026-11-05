@@ -9,12 +9,17 @@ const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const makeCode = () => Array.from({ length: 5 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
 
 type Msg =
-  | { t: 'hello'; name: string }
+  | { t: 'hello'; name: string; avatar?: string }
   | { t: 'state'; state: GameState; seat: Seat; hostNow: number }
   | { t: 'action'; action: Action }
   | { t: 'error'; key: string }
   | { t: 'emoji'; e: string }
   | { t: 'rematch' };
+
+export interface PlayerInfo {
+  name: string;
+  avatar: string;
+}
 
 export type Status = 'waiting' | 'connecting' | 'playing' | 'disconnected' | 'error';
 
@@ -64,8 +69,10 @@ function useTimeoutWatcher(state: GameState | null, onTimeout: () => void, enabl
   }, [state, enabled]);
 }
 
-export function useLocalGame(names: [string, string], minutes: number | null): Controller {
-  const [state, setState] = useState(() => newGame({ names, minutes }));
+export function useLocalGame(players: [PlayerInfo, PlayerInfo], minutes: number | null): Controller {
+  const names: [string, string] = [players[0].name, players[1].name];
+  const avatars: [string, string] = [players[0].avatar, players[1].avatar];
+  const [state, setState] = useState(() => newGame({ names, avatars, minutes }));
   const [whiteSeat, setWhiteSeat] = useState<Seat>(0);
 
   const act = useCallback(
@@ -92,14 +99,15 @@ export function useLocalGame(names: [string, string], minutes: number | null): C
     rematch: () => {
       const ws = otherSeat(whiteSeat);
       setWhiteSeat(ws);
-      setState(newGame({ names, minutes, whiteSeat: ws }));
+      setState(newGame({ names, avatars, minutes, whiteSeat: ws }));
     },
     reconnect: () => {},
   };
 }
 
 /** El anfitrión guarda el estado autoritativo y lo envía al invitado. */
-export function useHostGame(name: string, minutes: number | null): Controller {
+export function useHostGame(me: PlayerInfo, minutes: number | null): Controller {
+  const { name, avatar } = me;
   const [code, setCode] = useState(makeCode);
   const [state, setState] = useState<GameState | null>(null);
   const [status, setStatus] = useState<Status>('waiting');
@@ -144,7 +152,14 @@ export function useHostGame(name: string, minutes: number | null): Controller {
           if (!stateRef.current) {
             let guestName = msg.name.slice(0, 20) || '?';
             if (guestName === name) guestName += ' 2';
-            publish(newGame({ names: [name, guestName], minutes, whiteSeat: whiteRef.current }));
+            publish(
+              newGame({
+                names: [name, guestName],
+                avatars: [avatar, msg.avatar ?? 'crown-f'],
+                minutes,
+                whiteSeat: whiteRef.current,
+              }),
+            );
           } else {
             publish(stateRef.current);
           }
@@ -166,7 +181,7 @@ export function useHostGame(name: string, minutes: number | null): Controller {
       });
     });
     return () => peer.destroy();
-    // `name`/`minutes` no cambian durante la sesión
+    // `me`/`minutes` no cambian durante la sesión
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
@@ -174,7 +189,7 @@ export function useHostGame(name: string, minutes: number | null): Controller {
     const s = stateRef.current;
     if (!s) return;
     whiteRef.current = otherSeat(whiteRef.current);
-    publish(newGame({ names: s.names, minutes, whiteSeat: whiteRef.current }));
+    publish(newGame({ names: s.names, avatars: s.avatars, minutes, whiteSeat: whiteRef.current }));
   }, [minutes, publish]);
   const rematchRef = useRef(rematch);
   rematchRef.current = rematch;
@@ -199,7 +214,8 @@ export function useHostGame(name: string, minutes: number | null): Controller {
   };
 }
 
-export function useGuestGame(name: string, code: string, onError: (key: string) => void): Controller {
+export function useGuestGame(me: PlayerInfo, code: string, onError: (key: string) => void): Controller {
+  const { name, avatar } = me;
   const [state, setState] = useState<GameState | null>(null);
   const [status, setStatus] = useState<Status>('connecting');
   const [emoji, setEmoji] = useState<EmojiEvent | null>(null);
@@ -215,7 +231,7 @@ export function useGuestGame(name: string, code: string, onError: (key: string) 
     peer.on('open', () => {
       const conn = peer.connect(PEER_PREFIX + code.toUpperCase(), { reliable: true });
       connRef.current = conn;
-      conn.on('open', () => conn.send({ t: 'hello', name } satisfies Msg));
+      conn.on('open', () => conn.send({ t: 'hello', name, avatar } satisfies Msg));
       conn.on('data', (raw) => {
         const msg = raw as Msg;
         if (msg.t === 'state') {
@@ -234,7 +250,7 @@ export function useGuestGame(name: string, code: string, onError: (key: string) 
       setStatus(err.type === 'peer-unavailable' ? 'error' : 'disconnected');
     });
     return () => peer.destroy();
-  }, [code, name, attempt]);
+  }, [code, name, avatar, attempt]);
 
   return {
     mode: 'online',

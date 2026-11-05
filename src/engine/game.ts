@@ -27,6 +27,7 @@ const NO_MOVE_LIMIT = 0;
 
 export interface NewGameOptions {
   names: [string, string];
+  avatars?: [string, string];
   /** Minutos por jugador; null = sin límite */
   minutes: number | null;
   /** Asiento que juega con blancas */
@@ -46,6 +47,7 @@ export function newGame(opts: NewGameOptions): GameState {
     board,
     seatColor: whiteSeat === 0 ? ['w', 'b'] : ['b', 'w'],
     names: opts.names,
+    avatars: opts.avatars ?? ['crown-m', 'crown-f'],
     turn: whiteSeat,
     turnNumber: 1,
     hands,
