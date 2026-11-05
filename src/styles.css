@@ -780,6 +780,12 @@ select:focus {
   transition: transform 0.3s steps(6);
 }
 /* El sprite (2:3) se apoya en la base de la casilla y sobresale hacia arriba */
+.piece {
+  --depth: 1;
+  /* Contorno grueso y sombra proyectada hacia atrás: separan la pieza de la que tiene detrás */
+  --ring: drop-shadow(1.5px 0 0 var(--ink)) drop-shadow(-1.5px 0 0 var(--ink)) drop-shadow(0 -1.5px 0 var(--ink))
+    drop-shadow(0 -4px 0 rgba(10, 6, 24, 0.42));
+}
 .piece > .sprite {
   position: absolute;
   left: 9%;
@@ -787,9 +793,10 @@ select:focus {
   width: 82%;
   height: auto;
   aspect-ratio: 2 / 3;
+  filter: brightness(var(--depth)) saturate(calc(0.55 + var(--depth) * 0.45)) var(--ring);
 }
 .piece.frozen > .sprite {
-  filter: hue-rotate(170deg) saturate(2) brightness(1.15);
+  filter: hue-rotate(170deg) saturate(2) brightness(calc(var(--depth) * 1.15)) var(--ring);
 }
 .badge {
   position: absolute;

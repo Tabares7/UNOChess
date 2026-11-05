@@ -78,7 +78,14 @@ export function Board({ board, bottom, selected, targets, lastMove, zone, frame,
       <div
         key={p.id}
         className={`piece ${frozen.has(p.id) ? 'frozen' : ''}`}
-        style={{ transform: `translate(${x * 100}%, ${y * 100}%)`, zIndex: y + 1 }}
+        style={
+          {
+            transform: `translate(${x * 100}%, ${y * 100}%)`,
+            zIndex: y + 1,
+            // Las filas del fondo se ven más apagadas para separar las piezas solapadas
+            '--depth': (0.64 + (y / 7) * 0.36).toFixed(3),
+          } as React.CSSProperties
+        }
       >
         <PieceSprite type={p.type} color={p.color} />
         {shielded.has(p.id) && (
