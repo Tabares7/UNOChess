@@ -30,19 +30,22 @@ const def = (kind: Kind, gender: Gender, bg: AvatarDef['bg'], skin: string, hair
   bg,
 });
 
+/** Todos los personajes humanos comparten un tono de piel amarillo, como figuras de juguete */
+const SKIN = '#ffd23f';
+
 export const AVATARS: AvatarDef[] = [
-  def('crown', 'm', 'red', '#f5c9a0', '#7a4a2a', '#3b5bdb', '#c92a2a'),
-  def('crown', 'f', 'yellow', '#8d5a3b', '#2b1a12', '#7048e8', '#7b2cbf'),
-  def('knight', 'm', 'blue', '#c68642', '#2b1d0e', '#2f9e44', '#adb5bd'),
-  def('knight', 'f', 'blue', '#ffe0c7', '#e8590c', '#1c7ed6', '#adb5bd'),
-  def('wizard', 'm', 'green', '#f1c27d', '#e9ecef', '#5f3dc4', '#5f3dc4'),
-  def('wizard', 'f', 'green', '#a86b4a', '#f783ac', '#2f9e44', '#c2255c'),
+  def('crown', 'm', 'red', SKIN, '#7a4a2a', '#3b5bdb', '#c92a2a'),
+  def('crown', 'f', 'green', SKIN, '#2b1a12', '#7048e8', '#7b2cbf'),
+  def('knight', 'm', 'blue', SKIN, '#2b1d0e', '#2f9e44', '#adb5bd'),
+  def('knight', 'f', 'blue', SKIN, '#e8590c', '#1c7ed6', '#adb5bd'),
+  def('wizard', 'm', 'green', SKIN, '#e9ecef', '#5f3dc4', '#5f3dc4'),
+  def('wizard', 'f', 'green', SKIN, '#f783ac', '#2f9e44', '#c2255c'),
   def('robot', 'm', 'yellow', '#a9b8c9', '#868e96', '#3bc9db', '#868e96'),
   def('robot', 'f', 'yellow', '#c5d0dc', '#f783ac', '#3bc9db', '#9aa5b1'),
-  def('pirate', 'm', 'red', '#d9a066', '#2b1d0e', '#1c7ed6', '#c92a2a'),
-  def('pirate', 'f', 'red', '#ffd8b8', '#3a2418', '#2f9e44', '#c92a2a'),
-  def('ninja', 'm', 'blue', '#e0ac69', '#1a1a2e', '#343a40', '#2b2f3a'),
-  def('ninja', 'f', 'blue', '#ffe0c7', '#1a1a2e', '#c2255c', '#5f3dc4'),
+  def('pirate', 'm', 'red', SKIN, '#2b1d0e', '#1c7ed6', '#c92a2a'),
+  def('pirate', 'f', 'red', SKIN, '#3a2418', '#2f9e44', '#c92a2a'),
+  def('ninja', 'm', 'blue', SKIN, '#1a1a2e', '#343a40', '#2b2f3a'),
+  def('ninja', 'f', 'blue', SKIN, '#1a1a2e', '#c2255c', '#5f3dc4'),
 ];
 
 export const DEFAULT_AVATAR = 'crown-m';
