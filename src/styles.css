@@ -603,19 +603,32 @@ select:focus {
   100% { transform: translateY(-30px); opacity: 0; }
 }
 
-/* ---------- Tablero ---------- */
+/* ---------- Tablero (falsa perspectiva) ---------- */
 .board-wrap {
   position: relative;
   width: 100%;
-  max-width: min(100%, 52dvh);
+  max-width: min(100%, 60dvh);
   margin: 0 auto;
 }
 .board-frame {
   --fc: var(--red);
   --notch: 6px;
+  --front-h: 9px;
   background: var(--fc);
-  padding: 8px 8px 4px 4px;
+  /* Margen superior para que la fila del fondo no se corte */
+  padding: 5% 8px 4px 4px;
   transition: background 0.3s steps(3);
+  position: relative;
+}
+/* Grosor del marco: cara inferior más oscura */
+.board-frame::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 3px;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.3);
 }
 .frame-red { --fc: var(--red); }
 .frame-blue { --fc: var(--blue); }
@@ -636,6 +649,7 @@ select:focus {
   flex-direction: column;
   width: 14px;
   flex-shrink: 0;
+  padding-bottom: var(--front-h);
 }
 .coords.ranks span {
   flex: 1;
@@ -646,16 +660,36 @@ select:focus {
 .coords.files {
   margin-left: 14px;
   height: 14px;
+  position: relative;
+  z-index: 1;
 }
 .coords.files span {
   flex: 1;
   text-align: center;
 }
+.board-3d {
+  flex: 1;
+  position: relative;
+}
 .board {
   position: relative;
-  flex: 1;
-  aspect-ratio: 1;
+  width: 100%;
+  /* Casillas más anchas que altas: se ve el tablero inclinado */
+  aspect-ratio: 1 / 0.84;
   box-shadow: 0 0 0 3px var(--ink);
+}
+.board-front {
+  display: flex;
+  height: var(--front-h);
+  box-shadow: 0 0 0 3px var(--ink);
+  position: relative;
+}
+.board-front .front {
+  flex: 1;
+  filter: brightness(0.62) saturate(1.1);
+}
+.board-front .front.dim {
+  filter: brightness(0.45) saturate(0.6);
 }
 .sq {
   position: absolute;
@@ -666,14 +700,14 @@ select:focus {
   transition: filter 0.2s steps(2);
 }
 /* Cada cuadrante tiene su color UNO */
-.sq.z-red.light { background: #ffa8a8; }
-.sq.z-red.dark { background: #f06565; }
-.sq.z-blue.light { background: #a5d8ff; }
-.sq.z-blue.dark { background: #5c9ee6; }
-.sq.z-green.light { background: #b2f2bb; }
-.sq.z-green.dark { background: #5fbf71; }
-.sq.z-yellow.light { background: #fff3a8; }
-.sq.z-yellow.dark { background: #f2c94c; }
+.z-red.light { background: #ffa8a8; }
+.z-red.dark { background: #f06565; }
+.z-blue.light { background: #a5d8ff; }
+.z-blue.dark { background: #5c9ee6; }
+.z-green.light { background: #b2f2bb; }
+.z-green.dark { background: #5fbf71; }
+.z-yellow.light { background: #fff3a8; }
+.z-yellow.dark { background: #f2c94c; }
 /* Atenuación suave: la carta también vale por número fuera de su zona */
 .sq.dim {
   filter: brightness(0.72) saturate(0.6);
@@ -689,54 +723,81 @@ select:focus {
   box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.85);
 }
 .sq.sel::after {
-  box-shadow: inset 0 0 0 4px var(--ink), inset 0 0 0 7px #fff;
+  box-shadow: inset 0 0 0 3px var(--ink), inset 0 0 0 6px #fff;
   animation: blink 0.8s steps(2) infinite;
 }
 .sq.check::after {
   background: rgba(224, 49, 49, 0.75);
   animation: blink 0.6s steps(2) infinite;
 }
-.target {
-  position: absolute;
-  inset: 38%;
-  background: #fff;
-  box-shadow: 0 0 0 3px var(--ink);
-  z-index: 1;
-}
-.target.capture {
-  inset: 6%;
-  background: transparent;
-  box-shadow: inset 0 0 0 3px var(--ink), inset 0 0 0 6px #fff;
-}
-.pieces {
+.pieces,
+.markers {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+.pieces {
   z-index: 2;
 }
-.piece {
+/* Las marcas van encima de las piezas para que nunca queden tapadas */
+.markers {
+  z-index: 20;
+}
+.target {
   position: absolute;
   width: 12.5%;
   height: 12.5%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+}
+.target::after {
+  content: '';
+  position: absolute;
+  left: 38%;
+  right: 38%;
+  top: 34%;
+  bottom: 34%;
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--ink);
+  animation: hop 0.8s steps(2) infinite;
+}
+.target.capture::after {
+  left: 4%;
+  right: 4%;
+  top: 4%;
+  bottom: 4%;
+  background: transparent;
+  box-shadow: inset 0 0 0 3px var(--ink), inset 0 0 0 6px #ff6b6b;
+  animation: blink 0.8s steps(2) infinite;
+}
+@keyframes hop {
+  50% { transform: translateY(-2px); }
+}
+.piece {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 12.5%;
+  height: 12.5%;
   transition: transform 0.3s steps(6);
 }
+/* El sprite (2:3) se apoya en la base de la casilla y sobresale hacia arriba */
 .piece > .sprite {
-  width: 92%;
-  height: 92%;
-  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.35));
+  position: absolute;
+  left: 9%;
+  bottom: 6%;
+  width: 82%;
+  height: auto;
+  aspect-ratio: 2 / 3;
 }
 .piece.frozen > .sprite {
-  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.35)) hue-rotate(170deg) saturate(2) brightness(1.15);
+  filter: hue-rotate(170deg) saturate(2) brightness(1.15);
 }
 .badge {
   position: absolute;
-  top: 2%;
-  right: 2%;
-  width: 34%;
-  height: 34%;
+  top: -55%;
+  right: -4%;
+  width: 40%;
+  aspect-ratio: 1;
+  z-index: 1;
 }
 .badge .icon {
   width: 100%;
@@ -748,7 +809,7 @@ select:focus {
   right: -10px;
   top: 50%;
   transform: translate(0, -50%) rotate(8deg);
-  z-index: 3;
+  z-index: 30;
   animation: cardIn 0.4s steps(5);
   pointer-events: none;
   filter: drop-shadow(3px 3px 0 rgba(0, 0, 0, 0.5));
