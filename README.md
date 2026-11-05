@@ -14,7 +14,7 @@ Ajedrez donde las cartas deciden tu turno. App web instalable en el móvil (PWA)
 
 | Carta | Efecto |
 |---|---|
-| Número 0–9 | Mueve una pieza que salga o llegue a la zona de su color, máximo N casillas (0 = sin límite) |
+| Número 0–9 | Por color O por número: cualquier pieza que salga o llegue a su zona (a cualquier distancia), o cualquier pieza como máximo N casillas (0 = sin límite) |
 | +2 | Dos movimientos seguidos con piezas distintas |
 | Bloqueo | Mueves libremente y el rival pierde su turno (si no está en jaque) |
 | Reversa | Los jugadores se intercambian las piezas |

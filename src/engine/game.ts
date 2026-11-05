@@ -80,12 +80,18 @@ export function seatInCheck(state: GameState, seat: Seat) {
   return inCheck(state.board, colorOf(state, seat));
 }
 
-/** ¿La carta permite este movimiento (sin contar la excepción del jaque)? */
+/**
+ * ¿La carta permite este movimiento (sin contar la excepción del jaque)?
+ * Las cartas numéricas funcionan como en el UNO, por color O por número:
+ * vale cualquier movimiento que salga o llegue a su zona (a cualquier distancia)
+ * o cualquier movimiento de como máximo N casillas (en cualquier parte).
+ */
 export function cardAllowsMove(card: Card, move: Move): boolean {
   if (card.kind === 'number') {
-    const inZone = zoneOf(move.from) === card.color || zoneOf(move.to) === card.color;
+    const byColor = zoneOf(move.from) === card.color || zoneOf(move.to) === card.color;
     const limit = card.value ?? NO_MOVE_LIMIT;
-    return inZone && (limit === NO_MOVE_LIMIT || distance(move.from, move.to) <= limit);
+    const byNumber = limit === NO_MOVE_LIMIT || distance(move.from, move.to) <= limit;
+    return byColor || byNumber;
   }
   return card.kind === 'plus2' || card.kind === 'skip';
 }

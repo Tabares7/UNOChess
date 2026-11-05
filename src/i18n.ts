@@ -87,7 +87,7 @@ const es = {
     gameOver: 'La partida terminó',
   } as Record<string, string>,
   cards: {
-    number: ['Número', 'Mueve una pieza que salga o llegue a la zona de su color, como máximo N casillas (0 = sin límite).'],
+    number: ['Número', 'Por color O por número: mueve cualquier pieza que salga o llegue a su zona (a cualquier distancia), o cualquier pieza como máximo N casillas (0 = sin límite).'],
     plus2: ['+2', 'Dos movimientos seguidos con piezas distintas.'],
     skip: ['Bloqueo', 'Mueve libremente y tu rival pierde su turno (si no está en jaque).'],
     reverse: ['Reversa', 'Os intercambiáis las piezas: pasas a controlar las del rival.'],
@@ -99,7 +99,7 @@ const es = {
   } satisfies Record<CardKind, [string, string]>,
   rules: [
     'Es ajedrez normal, pero en cada turno juegas una de tus 3 cartas y robas otra.',
-    'El tablero tiene 4 zonas de color. Las cartas numéricas obligan a que el movimiento salga o llegue a su zona.',
+    'El tablero tiene 4 zonas de color. Una carta numérica vale por color (el movimiento sale o llega a su zona) o por número (como máximo N casillas en cualquier parte).',
     'Si estás en jaque, puedes ignorar tu carta y mover libremente para salir del jaque.',
     'Si ninguna carta te sirve, descarta una y pasa el turno.',
     'Se gana por jaque mate. Hay enroque y coronación, pero no captura al paso.',
@@ -192,7 +192,7 @@ const en: Dict = {
     gameOver: 'The game is over',
   },
   cards: {
-    number: ['Number', 'Move a piece that leaves or enters its color zone, at most N squares (0 = no limit).'],
+    number: ['Number', 'By color OR number: move any piece that leaves or enters its zone (any distance), or any piece up to N squares (0 = no limit).'],
     plus2: ['+2', 'Two moves in a row with different pieces.'],
     skip: ['Skip', 'Move freely and your opponent loses their turn (unless in check).'],
     reverse: ['Reverse', 'You swap pieces: you now control your opponent’s army.'],
@@ -204,7 +204,7 @@ const en: Dict = {
   },
   rules: [
     "It's regular chess, but each turn you play one of your 3 cards and draw another.",
-    'The board has 4 color zones. Number cards require the move to leave or enter their zone.',
+    'The board has 4 color zones. A number card works by color (the move leaves or enters its zone) or by number (up to N squares anywhere).',
     "If you're in check, you may ignore your card and move freely to escape.",
     'If no card helps, discard one and pass.',
     'Checkmate wins. Castling and promotion exist, en passant does not.',

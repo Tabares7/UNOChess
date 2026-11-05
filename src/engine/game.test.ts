@@ -51,14 +51,16 @@ describe('cartas', () => {
     expect(buildDeck()).toHaveLength(109);
   });
 
-  it('carta numérica limita distancia y zona', () => {
+  it('carta numérica vale por color O por número', () => {
     const g = game();
     const seat = g.turn;
     const card: Card = { id: 'x', kind: 'number', color: 'blue', value: 1 };
-    // e2 está en la zona azul; con 1 casilla solo puede ir a e3
-    expect(movesFor(g, seat, s('e2'), { card }).map((m) => m.to)).toEqual([s('e3')]);
-    // a2 está en la zona roja y no puede llegar a la azul
-    expect(movesFor(g, seat, s('a2'), { card })).toEqual([]);
+    // Por color: e2 está en la zona azul, así que puede ir a cualquier distancia
+    expect(movesFor(g, seat, s('e2'), { card }).map((m) => m.to).sort()).toEqual([s('e3'), s('e4')].sort());
+    // Por número: a2 está fuera de la zona azul, pero puede moverse 1 casilla
+    expect(movesFor(g, seat, s('a2'), { card }).map((m) => m.to)).toEqual([s('a3')]);
+    // El caballo de b1 ni toca la zona azul ni se mueve solo 1 casilla
+    expect(movesFor(g, seat, s('b1'), { card })).toEqual([]);
   });
 
   it('+2 permite dos movimientos con piezas distintas', () => {
